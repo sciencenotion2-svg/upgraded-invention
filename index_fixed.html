@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Replace with the REAL verification tag from Google Search Console -->
+    <!-- <meta name="google-site-verification" content="PASTE_REAL_CODE_HERE"> -->
+    <meta charset="UTF-8">
+    <title>My Website</title>
+</head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>LV-9 // 2D Rocket Engine Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   DESIGN TOKENS
+   ========================================================================== */
+:root{
+  --void:#05070a;
+  --deep:#0a1018;
+  --deep-2:#0d1520;
+  --panel:rgba(14,20,30,.62);
+  --panel-solid:#0e1420;
+  --border:rgba(130,175,255,.14);
+  --border-strong:rgba(130,175,255,.32);
+  --blue:#3fa9f5;
+  --blue-soft:#7fd4ff;
+  --blue-dim:#1c4f75;
+  --orange:#ff7a29;
+  --orange-hot:#ffcf5c;
+  --red:#ff4757;
+  --green:#34e5a8;
+  --text:#e9eef6;
+  --text-dim:#8797ad;
+  --text-faint:#4d5a6e;
+  --f-display:'Rajdhani',sans-serif;
+  --f-body:'Inter',sans-serif;
+  --f-mono:'JetBrains Mono',monospace;
+  --radius:10px;
+  --shake:0px;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+html,body{height:100%;}
+body{
+  background:var(--void);
+  color:var(--text);
+  font-family:var(--f-body);
+  overflow:hidden;
+  -webkit-font-smoothing:antialiased;
+  position:relative;
+}
+::selection{background:var(--blue-dim); color:#fff;}
+::-webkit-scrollbar{width:8px; height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong); border-radius:4px;}
+
+button{font-family:var(--f-display); cursor:pointer;}
+input[type=range]{-webkit-appearance:none; appearance:none;}
+
+/* ==========================================================================
+   BACKGROUND
+   ========================================================================== */
+#bgCanvas{
+  position:fixed; inset:0; width:100%; height:100%; z-index:0;
+  background:
+    radial-gradient(ellipse at 30% 0%, #0d1c2b 0%, transparent 55%),
+    radial-gradient(ellipse at 80% 100%, #150e1e 0%, transparent 50%),
+    var(--void);
+}
+
+/* ==========================================================================
+   APP SHELL
+   ========================================================================== */
+.app{
+  position:relative; z-index:1;
+  height:100vh;
+  display:grid;
+  grid-template-rows:56px 1fr 190px;
+  gap:8px;
+  padding:8px;
+  transform: translate(var(--shake), 0);
+}
+
+/* ---- Topbar ---- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 18px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  backdrop-filter:blur(14px);
+}
+.brand{display:flex; align-items:center; gap:12px;}
+.brand-mark{
+  width:30px; height:30px; border-radius:7px;
+  background:linear-gradient(145deg, var(--blue), #1a5f8f);
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--f-display); font-weight:700; font-size:14px; color:#02121c;
+  box-shadow:0 0 16px rgba(63,169,245,.5);
+}
+.brand-text{display:flex; flex-direction:column; line-height:1.05;}
+.brand-text b{font-family:var(--f-display); font-weight:700; font-size:15px; letter-spacing:.5px;}
+.brand-text span{font-size:10px; color:var(--text-dim); letter-spacing:1.5px; text-transform:uppercase;}
+
+.status-cluster{display:flex; align-items:center; gap:22px;}
+.status-item{display:flex; flex-direction:column; align-items:flex-end; line-height:1.1;}
+.status-item label{font-size:9px; color:var(--text-faint); letter-spacing:1.2px; text-transform:uppercase;}
+.status-item span{font-family:var(--f-mono); font-size:13px; font-weight:500;}
+
+.phase-light{display:flex; align-items:center; gap:8px; padding:6px 12px; border-radius:20px; border:1px solid var(--border); background:rgba(0,0,0,.25);}
+.phase-dot{width:8px; height:8px; border-radius:50%; background:var(--text-faint); transition:all .3s;}
+.phase-dot.idle{background:var(--text-faint);}
+.phase-dot.count{background:var(--orange-hot); box-shadow:0 0 8px var(--orange-hot); animation:blink .5s infinite;}
+.phase-dot.run{background:var(--green); box-shadow:0 0 8px var(--green);}
+.phase-dot.fail{background:var(--red); box-shadow:0 0 10px var(--red); animation:blink .3s infinite;}
+.phase-dot.shutdown{background:var(--blue-soft); box-shadow:0 0 8px var(--blue-soft);}
+@keyframes blink{50%{opacity:.25;}}
+.phase-label{font-family:var(--f-display); font-size:12px; font-weight:600; letter-spacing:1px; text-transform:uppercase;}
+
+.edu-btn{
+  display:flex; align-items:center; gap:6px;
+  background:rgba(63,169,245,.1); border:1px solid var(--border-strong);
+  color:var(--blue-soft); padding:8px 14px; border-radius:8px;
+  font-size:12px; font-weight:600; letter-spacing:.5px; text-transform:uppercase;
+  transition:all .2s;
+}
+.edu-btn:hover{background:rgba(63,169,245,.22); box-shadow:0 0 14px rgba(63,169,245,.25);}
+
+/* ---- Main layout ---- */
+.layout{
+  display:grid;
+  grid-template-columns:296px 1fr 300px;
+  gap:8px;
+  min-height:0;
+}
+.panel{
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  backdrop-filter:blur(14px);
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:16px;
+  min-height:0;
+}
+.panel h2{
+  font-family:var(--f-display); font-size:12px; font-weight:700; letter-spacing:1.6px;
+  text-transform:uppercase; color:var(--blue-soft); margin-bottom:14px;
+  display:flex; align-items:center; gap:8px;
+}
+.panel h2::before{content:''; width:3px; height:12px; background:var(--blue); border-radius:2px; box-shadow:0 0 6px var(--blue);}
+
+/* ---- Controls panel ---- */
+.control{margin-bottom:16px;}
+.control-head{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px;}
+.control-head label{font-size:11.5px; color:var(--text-dim); font-weight:500;}
+.control-head .val{font-family:var(--f-mono); font-size:12.5px; color:var(--text); font-weight:500;}
+input[type=range]{
+  width:100%; height:4px; border-radius:2px;
+  background:linear-gradient(90deg, var(--blue) var(--fill,50%), rgba(255,255,255,.08) var(--fill,50%));
+  outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:15px; height:15px; border-radius:50%;
+  background:#fff; border:3px solid var(--blue); cursor:pointer;
+  box-shadow:0 0 8px rgba(63,169,245,.7); transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15);}
+input[type=range]::-moz-range-thumb{
+  width:13px; height:13px; border-radius:50%; background:#fff; border:3px solid var(--blue); cursor:pointer;
+}
+input[type=range]:disabled{opacity:.35;}
+
+.btn-row{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:6px;}
+.btn{
+  border:1px solid var(--border-strong); background:rgba(255,255,255,.03);
+  color:var(--text); padding:11px 8px; border-radius:8px;
+  font-size:12.5px; font-weight:600; letter-spacing:.8px; text-transform:uppercase;
+  transition:all .18s; text-align:center;
+}
+.btn:hover:not(:disabled){transform:translateY(-1px); background:rgba(255,255,255,.07);}
+.btn:active:not(:disabled){transform:translateY(0);}
+.btn:disabled{opacity:.3; cursor:not-allowed;}
+.btn.start{grid-column:1/3; background:linear-gradient(180deg, rgba(52,229,168,.18), rgba(52,229,168,.05)); border-color:rgba(52,229,168,.45); color:var(--green);}
+.btn.start:hover:not(:disabled){box-shadow:0 0 18px rgba(52,229,168,.3);}
+.btn.stop{color:var(--orange-hot); border-color:rgba(255,122,41,.4);}
+.btn.pause{color:var(--blue-soft); border-color:rgba(63,169,245,.4);}
+.btn.reset{color:var(--text-dim);}
+.btn.emergency{
+  grid-column:1/3; background:linear-gradient(180deg, rgba(255,71,87,.2), rgba(255,71,87,.06));
+  border-color:rgba(255,71,87,.55); color:var(--red); margin-top:4px; font-weight:700;
+}
+.btn.emergency:hover:not(:disabled){box-shadow:0 0 18px rgba(255,71,87,.35);}
+.btn.repair{grid-column:1/3; background:linear-gradient(180deg, rgba(255,207,92,.2), rgba(255,207,92,.05)); border-color:rgba(255,207,92,.5); color:var(--orange-hot);}
+
+.limits-note{margin-top:14px; padding:10px 12px; border-radius:8px; background:rgba(255,255,255,.02); border:1px dashed var(--border); font-size:10.5px; color:var(--text-faint); line-height:1.5;}
+
+/* ---- Stage (center) ---- */
+.stage-wrap{
+  position:relative; border-radius:var(--radius); overflow:hidden;
+  border:1px solid var(--border); background:radial-gradient(ellipse at 50% 30%, #0c1420 0%, #060a10 75%);
+}
+.stage{
+  position:absolute; inset:0; cursor:grab;
+}
+.stage:active{cursor:grabbing;}
+.stage-inner{
+  position:absolute; left:50%; top:50%;
+  transform-origin:center center;
+  width:420px; height:1080px;
+  margin-left:-210px; margin-top:-440px;
+  transition:filter .3s;
+}
+#flameCanvas{position:absolute; left:0; top:0; width:100%; height:100%; pointer-events:none;}
+#rocketSvg{position:absolute; left:0; top:0; width:100%; height:100%; overflow:visible;}
+.rocket-part{transition:filter .15s, opacity .15s; cursor:pointer;}
+.rocket-part:hover{filter:brightness(1.35) drop-shadow(0 0 8px rgba(127,212,255,.6));}
+
+.stage-hud{position:absolute; top:12px; left:14px; display:flex; flex-direction:column; gap:3px; pointer-events:none;}
+.stage-hud .throttle-big{font-family:var(--f-mono); font-size:34px; font-weight:700; text-shadow:0 0 14px rgba(63,169,245,.5);}
+.stage-hud .throttle-lbl{font-size:9px; letter-spacing:2px; color:var(--text-faint); text-transform:uppercase;}
+
+.zoom-controls{position:absolute; bottom:12px; right:12px; display:flex; flex-direction:column; gap:6px;}
+.zoom-btn{
+  width:30px; height:30px; border-radius:7px; border:1px solid var(--border-strong);
+  background:rgba(10,15,24,.7); color:var(--text-dim); font-size:16px; line-height:1;
+  display:flex; align-items:center; justify-content:center; backdrop-filter:blur(6px);
+}
+.zoom-btn:hover{color:var(--blue-soft); border-color:var(--blue);}
+
+.tooltip{
+  position:absolute; z-index:20; pointer-events:none;
+  background:rgba(8,12,18,.95); border:1px solid var(--border-strong);
+  border-radius:8px; padding:10px 12px; max-width:210px;
+  font-size:11.5px; line-height:1.45; color:var(--text-dim);
+  box-shadow:0 8px 28px rgba(0,0,0,.5); opacity:0; transition:opacity .12s;
+}
+.tooltip b{display:block; color:var(--blue-soft); font-family:var(--f-display); font-size:12.5px; letter-spacing:.4px; margin-bottom:3px; text-transform:uppercase;}
+.tooltip.show{opacity:1;}
+
+.countdown-overlay{
+  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  background:rgba(5,7,10,.55); backdrop-filter:blur(2px);
+  z-index:15; opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.countdown-overlay.show{opacity:1;}
+.countdown-num{font-family:var(--f-display); font-size:130px; font-weight:700; color:var(--orange-hot); text-shadow:0 0 40px rgba(255,122,41,.6);}
+
+.warning-banner{
+  position:absolute; top:0; left:0; right:0; padding:8px; text-align:center;
+  background:repeating-linear-gradient(45deg, rgba(255,71,87,.18), rgba(255,71,87,.18) 10px, rgba(255,71,87,.28) 10px, rgba(255,71,87,.28) 20px);
+  border-bottom:1px solid rgba(255,71,87,.5);
+  font-family:var(--f-display); font-weight:700; letter-spacing:2px; font-size:12px; color:#ffd3d6;
+  z-index:16; transform:translateY(-100%); transition:transform .25s;
+}
+.warning-banner.show{transform:translateY(0);}
+
+.failure-overlay{
+  position:absolute; inset:0; z-index:14; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:14px; background:rgba(10,4,4,.55); opacity:0; pointer-events:none; transition:opacity .4s;
+}
+.failure-overlay.show{opacity:1; pointer-events:auto;}
+.failure-overlay h3{font-family:var(--f-display); color:var(--red); font-size:22px; letter-spacing:2px; text-shadow:0 0 20px rgba(255,71,87,.7);}
+.failure-overlay p{color:var(--text-dim); font-size:12px; max-width:320px; text-align:center;}
+
+/* ---- Data panel ---- */
+.gauge-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px;}
+.gauge-box{display:flex; flex-direction:column; align-items:center; padding:10px 6px; border-radius:9px; background:rgba(255,255,255,.02); border:1px solid var(--border);}
+.gauge-box svg{width:74px; height:74px;}
+.gauge-val{font-family:var(--f-mono); font-size:13px; font-weight:600; margin-top:2px;}
+.gauge-lbl{font-size:9px; color:var(--text-faint); letter-spacing:1px; text-transform:uppercase; margin-top:1px;}
+
+.readout-list{display:flex; flex-direction:column; gap:0;}
+.readout{
+  display:flex; justify-content:space-between; align-items:baseline;
+  padding:8px 2px; border-bottom:1px solid rgba(255,255,255,.05);
+}
+.readout label{font-size:11px; color:var(--text-dim);}
+.readout .rv{font-family:var(--f-mono); font-size:13px; font-weight:500;}
+.readout .rv.warn{color:var(--orange-hot);}
+.readout .rv.crit{color:var(--red);}
+.readout .unit{font-size:9.5px; color:var(--text-faint); margin-left:3px;}
+
+.bar-mini{height:5px; border-radius:3px; background:rgba(255,255,255,.07); overflow:hidden; margin-top:4px;}
+.bar-mini > div{height:100%; border-radius:3px; transition:width .15s;}
+
+/* ---- Charts panel ---- */
+.charts-panel{
+  background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+  backdrop-filter:blur(14px); padding:10px 14px; display:flex; flex-direction:column; min-height:0;
+}
+.charts-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+.charts-head h2{font-family:var(--f-display); font-size:11px; font-weight:700; letter-spacing:1.6px; text-transform:uppercase; color:var(--blue-soft);}
+.charts-legend{display:flex; gap:14px;}
+.charts-legend span{font-size:10px; color:var(--text-dim); display:flex; align-items:center; gap:5px;}
+.charts-legend i{width:8px; height:8px; border-radius:2px; display:inline-block;}
+.charts-grid{flex:1; display:grid; grid-template-columns:repeat(6,1fr); gap:8px; min-height:0;}
+.chart-cell{position:relative; border-radius:7px; background:rgba(255,255,255,.015); border:1px solid var(--border);}
+.chart-cell canvas{position:absolute; inset:0; width:100%; height:100%;}
+.chart-cell .ct{position:absolute; top:4px; left:7px; font-size:9px; letter-spacing:.6px; color:var(--text-faint); text-transform:uppercase; z-index:2;}
+.chart-cell .cv{position:absolute; top:4px; right:7px; font-family:var(--f-mono); font-size:10px; z-index:2;}
+
+/* ---- Educational Modal ---- */
+.modal-backdrop{
+  position:fixed; inset:0; z-index:100; background:rgba(3,5,8,.75); backdrop-filter:blur(4px);
+  display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity .25s;
+}
+.modal-backdrop.show{opacity:1; pointer-events:auto;}
+.modal{
+  width:min(880px, 92vw); max-height:85vh; overflow-y:auto;
+  background:var(--panel-solid); border:1px solid var(--border-strong); border-radius:14px;
+  padding:28px 32px; transform:translateY(14px) scale(.98); transition:transform .25s;
+}
+.modal-backdrop.show .modal{transform:translateY(0) scale(1);}
+.modal-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;}
+.modal-head h1{font-family:var(--f-display); font-size:22px; letter-spacing:.5px;}
+.modal-close{width:32px; height:32px; border-radius:8px; border:1px solid var(--border); background:none; color:var(--text-dim); font-size:16px;}
+.modal-close:hover{color:var(--red); border-color:var(--red);}
+.edu-section{margin-bottom:26px; padding-bottom:22px; border-bottom:1px solid rgba(255,255,255,.06);}
+.edu-section:last-child{border-bottom:none;}
+.edu-section h3{font-family:var(--f-display); color:var(--blue-soft); font-size:15px; letter-spacing:.5px; margin-bottom:8px; text-transform:uppercase;}
+.edu-section p{font-size:13px; color:var(--text-dim); line-height:1.7; margin-bottom:10px;}
+.edu-flex{display:flex; gap:20px; align-items:center; flex-wrap:wrap;}
+.edu-flex svg{flex-shrink:0;}
+.edu-flex .edu-text{flex:1; min-width:220px;}
+.formula{
+  font-family:var(--f-mono); background:rgba(63,169,245,.08); border:1px solid var(--border-strong);
+  border-radius:8px; padding:10px 14px; display:inline-block; color:var(--blue-soft); font-size:13.5px; margin:6px 0;
+}
+
+/* ---- misc ---- */
+.hidden{display:none !important;}
+.panel-toggle{display:none;}
+
+@media (max-width: 980px){
+  .layout{grid-template-columns:1fr;}
+  .panel{max-height:220px;}
+  .stage-wrap{min-height:340px; order:-1;}
+  .charts-grid{grid-template-columns:repeat(3,1fr); grid-template-rows:1fr 1fr;}
+  .charts-panel{max-height:none;}
+  .app{grid-template-rows:56px auto 1fr; height:auto; min-height:100vh; overflow-y:auto;}
+}
+@media (prefers-reduced-motion: reduce){
+  *{animation-duration:.001s !important; transition-duration:.001s !important;}
+}
+</style>
+</head>
+<body>
+
+<canvas id="bgCanvas"></canvas>
+
+<div class="app" id="appRoot">
+
+  <!-- ============ TOPBAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">LV</div>
+      <div class="brand-text">
+        <b>LV&#8209;9 ENGINE CONSOLE</b>
+        <span>2D Liquid Rocket Engine Simulator</span>
+      </div>
+    </div>
+    <div class="status-cluster">
+      <div class="status-item"><label>Mission Time</label><span id="metTime" class="rv">T+00:00.0</span></div>
+      <div class="status-item"><label>Burn Time</label><span id="burnTime" class="rv">00.0s</span></div>
+      <div class="phase-light"><div class="phase-dot idle" id="phaseDot"></div><div class="phase-label" id="phaseLabel">Standby</div></div>
+    </div>
+    <button class="edu-btn" id="eduOpenBtn">&#9432; How It Works</button>
+  </header>
+
+  <!-- ============ MAIN LAYOUT ============ -->
+  <div class="layout">
+
+    <!-- ---- Controls ---- -->
+    <aside class="panel" id="controlsPanel">
+      <h2>Flight Controls</h2>
+
+      <div class="control">
+        <div class="control-head"><label>Throttle</label><span class="val"><span id="vThrottle">0</span>%</span></div>
+        <input type="range" id="cThrottle" min="0" max="100" step="1" value="0">
+      </div>
+      <div class="control">
+        <div class="control-head"><label>Fuel Flow Rate</label><span class="val"><span id="vFuelFlow">18.0</span> kg/s</span></div>
+        <input type="range" id="cFuelFlow" min="4" max="40" step="0.5" value="18">
+      </div>
+      <div class="control">
+        <div class="control-head"><label>Oxidizer:Fuel Ratio</label><span class="val"><span id="vOF">2.6</span>:1</span></div>
+        <input type="range" id="cOF" min="1.0" max="6.0" step="0.1" value="2.6">
+      </div>
+      <div class="control">
+        <div class="control-head"><label>Nozzle Expansion Ratio</label><span class="val"><span id="vExp">16</span>:1</span></div>
+        <input type="range" id="cExp" min="5" max="40" step="1" value="16">
+      </div>
+      <div class="control">
+        <div class="control-head"><label>Local Gravity</label><span class="val"><span id="vGrav">9.81</span> m/s&sup2;</span></div>
+        <input type="range" id="cGrav" min="1.6" max="24.8" step="0.1" value="9.81">
+      </div>
+      <div class="control">
+        <div class="control-head"><label>Rocket Dry Mass</label><span class="val"><span id="vMass">1200</span> kg</span></div>
+        <input type="range" id="cMass" min="400" max="4000" step="50" value="1200">
+      </div>
+      <div class="control">
+        <div class="control-head"><label>Atmospheric Pressure</label><span class="val"><span id="vAtm">101.3</span> kPa</span></div>
+        <input type="range" id="cAtm" min="0" max="101.3" step="0.5" value="101.3">
+      </div>
+
+      <div class="btn-row">
+        <button class="btn start" id="btnStart">Ignition</button>
+        <button class="btn pause" id="btnPause" disabled>Pause</button>
+        <button class="btn stop" id="btnStop" disabled>Shutdown</button>
+        <button class="btn reset" id="btnReset">Reset</button>
+        <button class="btn emergency" id="btnEmergency" disabled>&#9888; Emergency Cutoff</button>
+        <button class="btn repair hidden" id="btnRepair">&#128295; Repair Engine</button>
+      </div>
+
+      <div class="limits-note">Push chamber pressure or temperature past their limits and the engine will fail. Emergency cutoff instantly zeroes throttle without a shutdown sequence.</div>
+    </aside>
+
+    <!-- ---- Stage ---- -->
+    <div class="stage-wrap" id="stageWrap">
+      <div class="stage" id="stage">
+        <div class="stage-inner" id="stageInner">
+          <canvas id="flameCanvas" width="420" height="1080"></canvas>
+          <svg id="rocketSvg" viewBox="0 0 420 1080"></svg>
+        </div>
+      </div>
+
+      <div class="stage-hud">
+        <div class="throttle-big"><span id="hudThrottle">0</span>%</div>
+        <div class="throttle-lbl">Throttle</div>
+      </div>
+
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomIn">+</button>
+        <button class="zoom-btn" id="zoomOut">&minus;</button>
+        <button class="zoom-btn" id="zoomReset" title="Reset view">&#8635;</button>
+      </div>
+
+      <div class="tooltip" id="tooltip"><b id="ttTitle"></b><span id="ttBody"></span></div>
+
+      <div class="warning-banner" id="warningBanner">&#9888; CHAMBER LIMITS EXCEEDED &mdash; REDUCE THROTTLE &#9888;</div>
+
+      <div class="countdown-overlay" id="countdownOverlay"><div class="countdown-num" id="countdownNum">5</div></div>
+
+      <div class="failure-overlay" id="failureOverlay">
+        <h3>&#128165; ENGINE FAILURE</h3>
+        <p id="failureReason">Combustion chamber over-pressure caused a structural failure. Repair the engine before the next ignition attempt.</p>
+      </div>
+    </div>
+
+    <!-- ---- Data ---- -->
+    <aside class="panel" id="dataPanel">
+      <h2>Telemetry</h2>
+      <div class="gauge-grid">
+        <div class="gauge-box"><svg id="gThrust" viewBox="0 0 80 80"></svg><div class="gauge-val" id="gThrustVal">0</div><div class="gauge-lbl">Thrust kN</div></div>
+        <div class="gauge-box"><svg id="gTemp" viewBox="0 0 80 80"></svg><div class="gauge-val" id="gTempVal">20</div><div class="gauge-lbl">Temp &deg;C</div></div>
+        <div class="gauge-box"><svg id="gPress" viewBox="0 0 80 80"></svg><div class="gauge-val" id="gPressVal">0</div><div class="gauge-lbl">Pressure MPa</div></div>
+        <div class="gauge-box"><svg id="gIsp" viewBox="0 0 80 80"></svg><div class="gauge-val" id="gIspVal">0</div><div class="gauge-lbl">Isp s</div></div>
+      </div>
+
+      <div class="readout-list">
+        <div class="readout"><label>Velocity</label><span><span class="rv" id="rVelocity">0.0</span><span class="unit">m/s</span></span></div>
+        <div class="readout"><label>Altitude</label><span><span class="rv" id="rAltitude">0.0</span><span class="unit">m</span></span></div>
+        <div class="readout"><label>Acceleration</label><span><span class="rv" id="rAccel">0.00</span><span class="unit">g</span></span></div>
+        <div class="readout"><label>Total Mass</label><span><span class="rv" id="rTotalMass">0</span><span class="unit">kg</span></span></div>
+        <div class="readout"><label>Delta&#8209;V (achieved)</label><span><span class="rv" id="rDv">0.0</span><span class="unit">m/s</span></span></div>
+        <div class="readout"><label>Mass Flow Rate</label><span><span class="rv" id="rMdot">0.0</span><span class="unit">kg/s</span></span></div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <div class="readout"><label>Fuel</label><span><span class="rv" id="rFuelPct">100</span><span class="unit">%</span></span></div>
+        <div class="bar-mini"><div id="barFuel" style="width:100%; background:linear-gradient(90deg,#3fa9f5,#7fd4ff);"></div></div>
+        <div class="readout" style="margin-top:8px;"><label>Oxidizer</label><span><span class="rv" id="rOxPct">100</span><span class="unit">%</span></span></div>
+        <div class="bar-mini"><div id="barOx" style="width:100%; background:linear-gradient(90deg,#ff7a29,#ffcf5c);"></div></div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ============ CHARTS ============ -->
+  <div class="charts-panel">
+    <div class="charts-head">
+      <h2>Flight Data Recorder</h2>
+      <div class="charts-legend">
+        <span><i style="background:#3fa9f5"></i>Live</span>
+        <span><i style="background:rgba(255,255,255,.2)"></i>60s window</span>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-cell"><span class="ct">Thrust (kN)</span><span class="cv" id="cvThrust">0</span><canvas id="chartThrust"></canvas></div>
+      <div class="chart-cell"><span class="ct">Altitude (m)</span><span class="cv" id="cvAlt">0</span><canvas id="chartAlt"></canvas></div>
+      <div class="chart-cell"><span class="ct">Velocity (m/s)</span><span class="cv" id="cvVel">0</span><canvas id="chartVel"></canvas></div>
+      <div class="chart-cell"><span class="ct">Fuel (%)</span><span class="cv" id="cvFuel">100</span><canvas id="chartFuel"></canvas></div>
+      <div class="chart-cell"><span class="ct">Temp (&deg;C)</span><span class="cv" id="cvTemp">20</span><canvas id="chartTemp"></canvas></div>
+      <div class="chart-cell"><span class="ct">Pressure (MPa)</span><span class="cv" id="cvPress">0</span><canvas id="chartPress"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ EDUCATIONAL MODAL ============ -->
+<div class="modal-backdrop" id="eduModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h1>How a Liquid Rocket Engine Works</h1>
+      <button class="modal-close" id="eduCloseBtn">&#10005;</button>
+    </div>
+
+    <div class="edu-section">
+      <h3>The Big Picture</h3>
+      <p>A liquid rocket engine turns stored chemical energy into thrust by burning a fuel and an oxidizer together in a combustion chamber, then accelerating the hot gas through a nozzle. Because it carries its own oxidizer, it works in the vacuum of space as well as in the atmosphere &mdash; it never needs to breathe outside air.</p>
+    </div>
+
+    <div class="edu-section">
+      <h3>Fuel &amp; Oxidizer</h3>
+      <div class="edu-flex">
+        <svg width="150" height="110" viewBox="0 0 150 110">
+          <rect x="14" y="10" width="50" height="80" rx="10" fill="none" stroke="#3fa9f5" stroke-width="2"/>
+          <rect x="18" y="46" width="42" height="40" rx="6" fill="#3fa9f5" opacity="0.35"/>
+          <text x="39" y="102" fill="#8797ad" font-size="10" text-anchor="middle" font-family="Inter">FUEL</text>
+          <rect x="86" y="10" width="50" height="80" rx="10" fill="none" stroke="#ff7a29" stroke-width="2"/>
+          <rect x="90" y="30" width="42" height="56" rx="6" fill="#ff7a29" opacity="0.35"/>
+          <text x="111" y="102" fill="#8797ad" font-size="10" text-anchor="middle" font-family="Inter">OXIDIZER</text>
+        </svg>
+        <div class="edu-text">
+          <p>Two propellants are stored in separate tanks: a fuel (such as kerosene, hydrogen, or methane) and an oxidizer (typically liquid oxygen). They're pumped at high pressure into the chamber in a ratio &mdash; the <b>oxidizer-to-fuel ratio (O:F)</b> &mdash; tuned for the most efficient, stable combustion.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="edu-section">
+      <h3>Turbopumps &amp; the Combustion Chamber</h3>
+      <p>Turbopumps spin at tens of thousands of RPM to force propellant into the chamber far faster than gravity ever could. Inside the chamber, the propellants atomize, mix, and burn continuously at temperatures exceeding 3000&deg;C, generating enormous chamber pressure that has nowhere to go but down, through the throat.</p>
+    </div>
+
+    <div class="edu-section">
+      <h3>Nozzle Expansion</h3>
+      <div class="edu-flex">
+        <svg width="170" height="100" viewBox="0 0 170 100">
+          <path d="M20 20 L70 40 L70 60 Q120 62 150 20 L150 80 Q120 38 70 60 L70 40 L20 80 Z" fill="rgba(63,169,245,.18)" stroke="#3fa9f5" stroke-width="2"/>
+          <text x="45" y="15" fill="#8797ad" font-size="9" font-family="Inter">chamber</text>
+          <text x="120" y="15" fill="#8797ad" font-size="9" font-family="Inter">exit</text>
+        </svg>
+        <div class="edu-text">
+          <p>The converging-diverging (bell) nozzle accelerates exhaust gas to supersonic speed. The <b>expansion ratio</b> (exit area &divide; throat area) determines how far the gas expands before leaving the nozzle. A nozzle sized for vacuum overexpands at sea level, losing efficiency &mdash; which is why rockets are shaped differently for atmospheric and space flight.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="edu-section">
+      <h3>The Thrust Equation</h3>
+      <p>Thrust comes from momentum leaving the engine, plus a small correction for the pressure difference between the exhaust and the surrounding air:</p>
+      <div class="formula">F = m&#775; &middot; Ve + (Pe &minus; Pa) &middot; Ae</div>
+      <p>where <b>m&#775;</b> is the propellant mass flow rate, <b>Ve</b> is exhaust velocity, and the second term accounts for exit vs. ambient pressure acting on the nozzle exit area <b>Ae</b>.</p>
+    </div>
+
+    <div class="edu-section">
+      <h3>Specific Impulse (Isp)</h3>
+      <p>Specific impulse measures propellant efficiency &mdash; how much thrust you get per unit of propellant burned per second. Higher Isp means a rocket can achieve more velocity change from the same amount of propellant.</p>
+      <div class="formula">Isp = Ve / g&#8320;</div>
+    </div>
+
+    <div class="edu-section">
+      <h3>Mass Flow &amp; the Rocket Equation</h3>
+      <p>As propellant burns, the vehicle gets lighter, so the same thrust produces more acceleration over time. The total velocity a rocket can gain is governed by the Tsiolkovsky rocket equation:</p>
+      <div class="formula">&Delta;v = Isp &middot; g&#8320; &middot; ln(m&#8320; / m&#7524;)</div>
+      <p>where <b>m&#8320;</b> is the initial (wet) mass and <b>m&#7524;</b> is the final mass after all propellant is spent.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ==========================================================================
+   0. UTILITIES
+   ========================================================================== */
+const clamp = (v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp  = (a,b,t)=>a+(b-a)*t;
+const map   = (v,a,b,c,d)=>c+(d-c)*((v-a)/(b-a));
+const rand  = (a,b)=>a+Math.random()*(b-a);
+const $  = id=>document.getElementById(id);
+
+/* ==========================================================================
+   1. BACKGROUND FX  (stars, drifting particles, animated grid)
+   ========================================================================== */
+const BackgroundFX = (()=>{
+  const canvas = $('bgCanvas');
+  const ctx = canvas.getContext('2d');
+  let w,h, stars=[], motes=[], t=0;
+
+  function resize(){
+    w = canvas.width = window.innerWidth;
+    h = canvas.height = window.innerHeight;
+    stars = Array.from({length:180}, ()=>({
+      x:Math.random()*w, y:Math.random()*h, r:Math.random()*1.4+0.2,
+      tw:Math.random()*Math.PI*2, sp:rand(0.5,2)
+    }));
+    motes = Array.from({length:34}, ()=>({
+      x:Math.random()*w, y:Math.random()*h, r:rand(0.6,2.2),
+      vx:rand(-0.08,0.08), vy:rand(-0.05,-0.16), a:rand(.08,.28)
+    }));
+  }
+  window.addEventListener('resize', resize);
+  resize();
+
+  function drawGrid(){
+    const spacing = 46;
+    const offset = (t*4) % spacing;
+    ctx.strokeStyle = 'rgba(63,169,245,0.035)';
+    ctx.lineWidth = 1;
+    for(let x=-spacing; x<w+spacing; x+=spacing){
+      ctx.beginPath(); ctx.moveTo(x+offset*0, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for(let y=(offset); y<h+spacing; y+=spacing){
+      ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke();
+    }
+  }
+
+  function frame(){
+    t += 0.016;
+    ctx.clearRect(0,0,w,h);
+    drawGrid();
+    for(const s of stars){
+      const a = 0.35 + Math.sin(t*s.sp + s.tw)*0.35;
+      ctx.fillStyle = `rgba(210,228,255,${Math.max(0,a)})`;
+      ctx.beginPath(); ctx.arc(s.x,s.y,s.r,0,7); ctx.fill();
+    }
+    for(const m of motes){
+      m.x += m.vx; m.y += m.vy;
+      if(m.y < -10){ m.y = h+10; m.x = Math.random()*w; }
+      if(m.x < -10) m.x = w+10; if(m.x>w+10) m.x=-10;
+      ctx.fillStyle = `rgba(127,212,255,${m.a})`;
+      ctx.beginPath(); ctx.arc(m.x,m.y,m.r,0,7); ctx.fill();
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+  return {};
+})();
+
+/* ==========================================================================
+   2. AUDIO ENGINE  (procedural engine roar via WebAudio, no samples)
+   ========================================================================== */
+const AudioEngine = (()=>{
+  let ctxA=null, running=false, master, roarGain, noiseSrc, noiseFilter, lowOsc, lowGain, crackleGain, crackleTimer;
+
+  function ensure(){
+    if(ctxA) return;
+    ctxA = new (window.AudioContext || window.webkitAudioContext)();
+    master = ctxA.createGain(); master.gain.value = 0; master.connect(ctxA.destination);
+
+    // filtered noise = the broadband "rush" of exhaust
+    const bufSize = ctxA.sampleRate * 2;
+    const buf = ctxA.createBuffer(1, bufSize, ctxA.sampleRate);
+    const data = buf.getChannelData(0);
+    for(let i=0;i<bufSize;i++) data[i] = Math.random()*2-1;
+    noiseSrc = ctxA.createBufferSource(); noiseSrc.buffer = buf; noiseSrc.loop = true;
+    noiseFilter = ctxA.createBiquadFilter(); noiseFilter.type='bandpass'; noiseFilter.frequency.value=420; noiseFilter.Q.value=0.6;
+    roarGain = ctxA.createGain(); roarGain.gain.value = 0;
+    noiseSrc.connect(noiseFilter); noiseFilter.connect(roarGain); roarGain.connect(master);
+
+    // low oscillator = engine rumble body
+    lowOsc = ctxA.createOscillator(); lowOsc.type='sawtooth'; lowOsc.frequency.value=44;
+    lowGain = ctxA.createGain(); lowGain.gain.value=0;
+    lowOsc.connect(lowGain); lowGain.connect(master);
+
+    crackleGain = ctxA.createGain(); crackleGain.gain.value=0; crackleGain.connect(master);
+
+    noiseSrc.start(); lowOsc.start();
+  }
+
+  function start(){
+    ensure();
+    if(ctxA.state==='suspended') ctxA.resume();
+    running = true;
+    master.gain.setTargetAtTime(1, ctxA.currentTime, 0.05);
+  }
+  function stop(){
+    running = false;
+    if(master) master.gain.setTargetAtTime(0, ctxA.currentTime, 0.4);
+  }
+  function update(throttle01){
+    if(!ctxA || !running) return;
+    const t = ctxA.currentTime;
+    noiseFilter.frequency.setTargetAtTime(map(throttle01,0,1,180,1500), t, 0.08);
+    roarGain.gain.setTargetAtTime(map(throttle01,0,1,0.02,0.32), t, 0.08);
+    lowOsc.frequency.setTargetAtTime(map(throttle01,0,1,30,95), t, 0.1);
+    lowGain.gain.setTargetAtTime(map(throttle01,0,1,0.02,0.22), t, 0.1);
+  }
+  function ignitionPop(){
+    ensure();
+    if(ctxA.state==='suspended') ctxA.resume();
+    const t = ctxA.currentTime;
+    const o = ctxA.createOscillator(); o.type='square'; o.frequency.setValueAtTime(120,t);
+    o.frequency.exponentialRampToValueAtTime(30, t+0.4);
+    const g = ctxA.createGain(); g.gain.setValueAtTime(0.5,t); g.gain.exponentialRampToValueAtTime(0.001, t+0.5);
+    o.connect(g); g.connect(master || ctxA.destination); o.start(t); o.stop(t+0.5);
+  }
+  return {start, stop, update, ignitionPop};
+})();
+
+/* ==========================================================================
+   3. SIMULATION STATE & PHYSICS
+   ========================================================================== */
+const G0 = 9.80665;
+const sim = {
+  phase:'idle',            // idle | countdown | run | shutdown | failed
+  throttleTarget:0, throttle:0,     // 0..1 (actual lags target slightly = spool)
+  fuel:0, fuelCap:3000,
+  ox:0, oxCap:0,             // computed from fuelCap * ofRatio-ish headroom
+  dryMass:1200,
+  gravity:9.81,
+  atmPressure:101.3, // kPa
+  ofRatio:2.6,
+  fuelFlowMax:18,     // kg/s of FUEL at 100% throttle
+  expansionRatio:16,
+  velocity:0, altitude:0, accel:0,
+  thrust:0, mdot:0, isp:0,
+  chamberTemp:20, chamberTempTarget:20,
+  chamberPressure:0, chamberPressureTarget:0,
+  burnTime:0, missionTime:0,
+  dv:0,
+  tempLimit:3350, pressureLimit:22.5, // MPa
+  overLimitTimer:0,
+  countdownVal:5,
+  vibration:0,
+};
+
+function resetSim(){
+  sim.phase='idle';
+  sim.throttleTarget=0; sim.throttle=0;
+  sim.fuel=sim.fuelCap; sim.ox=sim.oxCap;
+  sim.velocity=0; sim.altitude=0; sim.accel=0;
+  sim.thrust=0; sim.mdot=0; sim.isp=0;
+  sim.chamberTemp=20; sim.chamberTempTarget=20;
+  sim.chamberPressure=0; sim.chamberPressureTarget=0;
+  sim.burnTime=0; sim.missionTime=0; sim.dv=0;
+  sim.overLimitTimer=0; sim.vibration=0;
+  $('cThrottle').value = 0; $('cThrottle').disabled=false;
+  updateSliderFill($('cThrottle'));
+  setPhaseUI('idle');
+  Charts.reset();
+  $('failureOverlay').classList.remove('show');
+  $('warningBanner').classList.remove('show');
+  $('btnRepair').classList.add('hidden');
+  setControlsDisabled(false);
+  $('btnStart').disabled=false; $('btnPause').disabled=true; $('btnStop').disabled=true; $('btnEmergency').disabled=true;
+}
+
+function recalcCapacities(){
+  // fuelCap fixed by design choice (upper tank size), oxCap derives loosely from OF ratio headroom
+  sim.oxCap = sim.fuelCap * clamp(sim.ofRatio, 1, 6) * 0.62;
+  if(sim.phase==='idle'){ sim.fuel = sim.fuelCap; sim.ox = sim.oxCap; }
+}
+recalcCapacities();
+sim.fuel = sim.fuelCap; sim.ox = sim.oxCap;
+
+function stepPhysics(dt){
+  // --- throttle spool lag ---
+  const spoolRate = sim.phase==='failed' ? 8 : 3.2;
+  sim.throttle += (sim.throttleTarget - sim.throttle) * clamp(spoolRate*dt,0,1);
+  if(Math.abs(sim.throttle-sim.throttleTarget) < 0.001) sim.throttle = sim.throttleTarget;
+
+  const running = (sim.phase==='run' || sim.phase==='shutdown') && sim.throttle > 0.001;
+
+  // --- propellant flow ---
+  let mdotFuel = 0, mdotOx = 0;
+  if(running && sim.fuel>0 && sim.ox>0){
+    mdotFuel = sim.fuelFlowMax * sim.throttle;
+    mdotOx = mdotFuel * sim.ofRatio;
+    const fuelTake = Math.min(sim.fuel, mdotFuel*dt);
+    const oxTake = Math.min(sim.ox, mdotOx*dt);
+    sim.fuel -= fuelTake;
+    sim.ox -= oxTake;
+    if(sim.fuel<=0 || sim.ox<=0){ sim.fuel=Math.max(0,sim.fuel); sim.ox=Math.max(0,sim.ox); }
+  }
+  sim.mdot = mdotFuel + mdotOx;
+
+  // --- exhaust velocity / Isp model (simplified: flat base Isp, a gentle
+  //     bonus for a bigger nozzle, a gentle penalty for thicker atmosphere —
+  //     no expansion-mismatch curve) ---
+  const baseIsp = 300;
+  const expansionBonus = map(clamp(sim.expansionRatio,5,40), 5, 40, -20, 20);
+  const atmPenalty = map(clamp(sim.atmPressure,0,101.3), 0, 101.3, 0, 30);
+  sim.isp = baseIsp + expansionBonus - atmPenalty;
+  const Ve = sim.isp * G0;
+
+  // --- thrust: simple momentum thrust ---
+  sim.thrust = running ? sim.mdot * Ve : 0;
+
+  // --- chamber pressure & temperature: track throttle directly ---
+  const basePressure = 22.5; // MPa @ 100% throttle
+  sim.chamberPressureTarget = running ? basePressure * sim.throttle : 0;
+  sim.chamberPressure += (sim.chamberPressureTarget - sim.chamberPressure) * clamp(4*dt,0,1);
+  sim.chamberPressure = Math.max(0, sim.chamberPressure);
+
+  const ambientC = 20;
+  const maxDeltaT = 3400;
+  sim.chamberTempTarget = running ? ambientC + maxDeltaT * sim.throttle : Math.max(ambientC, sim.chamberTemp - 40*dt);
+  const thermalLag = running ? 0.9 : 0.35;
+  sim.chamberTemp += (sim.chamberTempTarget - sim.chamberTemp) * clamp(thermalLag*dt,0,1);
+
+  sim.vibration = running ? sim.throttle*(0.6+Math.random()*0.4) : Math.max(0, sim.vibration-2*dt);
+
+  // --- failure check ---
+  if(sim.phase==='run' || sim.phase==='shutdown'){
+    const overPressure = sim.chamberPressure > sim.pressureLimit;
+    const overTemp = sim.chamberTemp > sim.tempLimit;
+    if(overPressure || overTemp){
+      sim.overLimitTimer += dt;
+      $('warningBanner').classList.add('show');
+      if(sim.overLimitTimer > 1.6){
+        triggerFailure(overPressure ? 'Chamber pressure exceeded structural limits, rupturing the combustion chamber.' : 'Chamber temperature exceeded material limits, burning through the chamber wall.');
+      }
+    } else {
+      sim.overLimitTimer = Math.max(0, sim.overLimitTimer-dt*2);
+      if(sim.overLimitTimer<=0) $('warningBanner').classList.remove('show');
+    }
+  }
+
+  // --- rigid body integration (vertical, no drag): F = thrust - weight ---
+  const mass = sim.dryMass + sim.fuel + sim.ox;
+  const weight = mass * sim.gravity;
+  const netForce = sim.thrust - weight;
+  sim.accel = sim.phase==='run'||sim.phase==='shutdown' ? netForce/mass : 0;
+
+  if(sim.phase==='run' || sim.phase==='shutdown'){
+    sim.velocity += sim.accel*dt;
+    sim.altitude += sim.velocity*dt;
+    if(sim.altitude < 0){ sim.altitude=0; if(sim.velocity<0) sim.velocity=0; }
+    sim.burnTime += (sim.throttle>0.001)? dt : 0;
+    sim.missionTime += dt;
+    if(sim.thrust>0) sim.dv += (sim.thrust/mass)*dt;
+  }
+
+  // auto end shutdown once throttle reaches 0
+  if(sim.phase==='shutdown' && sim.throttle<=0.001){
+    setPhaseUI('idle');
+    sim.phase='idle';
+    finalizeStop();
+  }
+  // out of propellant while running -> auto shutdown
+  if(sim.phase==='run' && (sim.fuel<=0 || sim.ox<=0)){
+    beginShutdown();
+  }
+
+  AudioEngine.update(sim.phase==='run'||sim.phase==='shutdown' ? sim.throttle : 0);
+}
+
+function triggerFailure(reason){
+  sim.phase='failed';
+  sim.throttleTarget=0;
+  setPhaseUI('fail');
+  $('failureReason').textContent = reason;
+  $('failureOverlay').classList.add('show');
+  $('btnRepair').classList.remove('hidden');
+  setControlsDisabled(true);
+  $('btnStart').disabled=true; $('btnPause').disabled=true; $('btnStop').disabled=true; $('btnEmergency').disabled=true;
+  AudioEngine.stop();
+  Stage.screenShake(1.0);
+  Flame.triggerExplosion();
+}
+
+function beginShutdown(){
+  if(sim.phase!=='run') return;
+  sim.phase='shutdown';
+  sim.throttleTarget=0;
+  $('cThrottle').disabled=true;
+  setPhaseUI('shutdown');
+  $('btnPause').disabled=true; $('btnStop').disabled=true; $('btnEmergency').disabled=true;
+}
+function finalizeStop(){
+  setControlsDisabled(false);
+  $('btnStart').disabled=false; $('btnPause').disabled=true; $('btnStop').disabled=true; $('btnEmergency').disabled=true;
+  $('cThrottle').disabled=false;
+  AudioEngine.stop();
+}
+function setControlsDisabled(disabled){
+  ['cFuelFlow','cOF','cExp','cGrav','cMass','cAtm'].forEach(id=>$(id).disabled=disabled);
+}
+
+function setPhaseUI(phase){
+  const dot = $('phaseDot'), lbl=$('phaseLabel');
+  dot.className='phase-dot '+phase;
+  const names={idle:'Standby', countdown:'Countdown', run:'Engine Running', shutdown:'Shutting Down', fail:'Failure'};
+  lbl.textContent = names[phase] || phase;
+}
+
+/* ==========================================================================
+   4. UI WIRING — sliders, buttons
+   ========================================================================== */
+function updateSliderFill(input){
+  const min=+input.min, max=+input.max, val=+input.value;
+  input.style.setProperty('--fill', map(val,min,max,0,100)+'%');
+}
+function bindSlider(id, cb){
+  const el = $(id);
+  el.addEventListener('input', ()=>{ updateSliderFill(el); cb(+el.value); });
+  updateSliderFill(el);
+}
+
+bindSlider('cThrottle', v=>{ sim.throttleTarget = v/100; $('vThrottle').textContent = v; });
+bindSlider('cFuelFlow', v=>{ sim.fuelFlowMax=v; $('vFuelFlow').textContent = v.toFixed(1); });
+bindSlider('cOF', v=>{ sim.ofRatio=v; $('vOF').textContent=v.toFixed(1); recalcCapacities(); });
+bindSlider('cExp', v=>{ sim.expansionRatio=v; $('vExp').textContent=Math.round(v); });
+bindSlider('cGrav', v=>{ sim.gravity=v; $('vGrav').textContent=v.toFixed(2); });
+bindSlider('cMass', v=>{ sim.dryMass=v; $('vMass').textContent=Math.round(v); });
+bindSlider('cAtm', v=>{ sim.atmPressure=v; $('vAtm').textContent=v.toFixed(1); });
+
+$('btnStart').addEventListener('click', ()=>{
+  if(sim.phase!=='idle') return;
+  startCountdown();
+});
+$('btnPause').addEventListener('click', ()=>{
+  if(sim.phase==='run'){
+    sim._pausedTarget = sim.throttleTarget;
+    sim.phase='paused-run';
+    Loop.pause();
+    $('btnPause').textContent='Resume';
+    setPhaseUI('idle'); $('phaseLabel').textContent='Paused';
+  } else if(sim.phase==='paused-run'){
+    sim.phase='run';
+    Loop.resume();
+    $('btnPause').textContent='Pause';
+    setPhaseUI('run');
+  }
+});
+$('btnStop').addEventListener('click', ()=> beginShutdown());
+$('btnEmergency').addEventListener('click', ()=>{
+  if(sim.phase!=='run' && sim.phase!=='shutdown') return;
+  sim.throttleTarget=0; sim.throttle=0;
+  sim.phase='idle';
+  setPhaseUI('idle');
+  finalizeStop();
+  $('cThrottle').value=0; updateSliderFill($('cThrottle')); $('vThrottle').textContent='0';
+});
+$('btnReset').addEventListener('click', ()=>{ resetSim(); });
+$('btnRepair').addEventListener('click', ()=>{
+  sim.phase='idle';
+  sim.chamberTemp=20; sim.chamberPressure=0; sim.overLimitTimer=0; sim.throttle=0; sim.throttleTarget=0;
+  $('cThrottle').value=0; updateSliderFill($('cThrottle'));
+  setPhaseUI('idle');
+  $('failureOverlay').classList.remove('show');
+  $('warningBanner').classList.remove('show');
+  $('btnRepair').classList.add('hidden');
+  setControlsDisabled(false);
+  $('btnStart').disabled=false;
+  $('cThrottle').disabled=false;
+});
+
+function startCountdown(){
+  sim.phase='countdown';
+  setPhaseUI('countdown');
+  $('btnStart').disabled=true;
+  $('cThrottle').disabled=true;
+  let n=5;
+  $('countdownOverlay').classList.add('show');
+  $('countdownNum').textContent = n;
+  const iv = setInterval(()=>{
+    n--;
+    if(n>0){ $('countdownNum').textContent=n; }
+    else {
+      clearInterval(iv);
+      $('countdownOverlay').classList.remove('show');
+      sim.phase='run';
+      setPhaseUI('run');
+      AudioEngine.start();
+      AudioEngine.ignitionPop();
+      Stage.screenShake(0.6);
+      $('cThrottle').disabled=false;
+      $('btnPause').disabled=false; $('btnStop').disabled=false; $('btnEmergency').disabled=false;
+      $('btnPause').textContent='Pause';
+      // gentle default throttle-up if still zero
+      if(sim.throttleTarget<=0){ sim.throttleTarget=0.55; $('cThrottle').value=55; updateSliderFill($('cThrottle')); $('vThrottle').textContent='55'; }
+    }
+  }, 700);
+}
+
+$('eduOpenBtn').addEventListener('click', ()=> $('eduModal').classList.add('show'));
+$('eduCloseBtn').addEventListener('click', ()=> $('eduModal').classList.remove('show'));
+$('eduModal').addEventListener('click', e=>{ if(e.target.id==='eduModal') $('eduModal').classList.remove('show'); });
+
+/* ==========================================================================
+   5. ROCKET SVG STRUCTURE + TOOLTIPS + CAMERA
+   ========================================================================== */
+const PARTS_INFO = {
+  fuelTank:{t:'Fuel Tank', d:'Stores the fuel propellant under pressure, feeding it toward the turbopump.'},
+  oxTank:{t:'Oxidizer Tank', d:'Stores liquid oxidizer that will combine with fuel in the chamber.'},
+  pipes:{t:'Feed Lines', d:'High-pressure piping that routes propellant from tanks to turbopumps.'},
+  turbopumpFuel:{t:'Fuel Turbopump', d:'Spins at high RPM to pressurize and push fuel into the combustion chamber.'},
+  turbopumpOx:{t:'Oxidizer Turbopump', d:'Spins at high RPM to pressurize and push oxidizer into the combustion chamber.'},
+  chamber:{t:'Combustion Chamber', d:'Where atomized propellants mix and burn continuously at extreme temperature and pressure.'},
+  nozzle:{t:'Exhaust Nozzle', d:'A converging-diverging bell that accelerates combustion gas to supersonic exhaust velocity.'}
+};
+
+const svgNS = 'http://www.w3.org/2000/svg';
+function el(name, attrs, parent){
+  const n = document.createElementNS(svgNS, name);
+  for(const k in attrs) n.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(n);
+  return n;
+}
+
+const rocketSvg = $('rocketSvg');
+let defs, gTurboFuel, gTurboOx, chamberGlow, chamberBody, gFlicker;
+
+function buildRocket(){
+  defs = el('defs',{}, rocketSvg);
+
+  const gradFuel = el('linearGradient',{id:'gradFuel', x1:'0',y1:'0',x2:'1',y2:'0'},defs);
+  el('stop',{offset:'0%','stop-color':'#1c4f75'},gradFuel);
+  el('stop',{offset:'50%','stop-color':'#3fa9f5'},gradFuel);
+  el('stop',{offset:'100%','stop-color':'#1c4f75'},gradFuel);
+
+  const gradOx = el('linearGradient',{id:'gradOx', x1:'0',y1:'0',x2:'1',y2:'0'},defs);
+  el('stop',{offset:'0%','stop-color':'#8a3f10'},gradOx);
+  el('stop',{offset:'50%','stop-color':'#ff7a29'},gradOx);
+  el('stop',{offset:'100%','stop-color':'#8a3f10'},gradOx);
+
+  const gradChamber = el('radialGradient',{id:'gradChamber', cx:'50%',cy:'30%',r:'75%'},defs);
+  el('stop',{offset:'0%','stop-color':'#ffe9b0'},gradChamber);
+  el('stop',{offset:'40%','stop-color':'#ffcf5c'},gradChamber);
+  el('stop',{offset:'100%','stop-color':'#7a3a10'},gradChamber);
+
+  const gradMetal = el('linearGradient',{id:'gradMetal', x1:'0',y1:'0',x2:'1',y2:'0'},defs);
+  el('stop',{offset:'0%','stop-color':'#1a222e'},gradMetal);
+  el('stop',{offset:'50%','stop-color':'#3a4a5e'},gradMetal);
+  el('stop',{offset:'100%','stop-color':'#151c26'},gradMetal);
+
+  // ---- Fuel tank (left) ----
+  const fuelG = el('g',{class:'rocket-part', 'data-part':'fuelTank'}, rocketSvg);
+  el('rect',{x:70,y:16,width:100,height:170,rx:22,fill:'url(#gradFuel)', stroke:'#0d1c2b','stroke-width':2}, fuelG);
+  el('rect',{x:70,y:16,width:100,height:170,rx:22,fill:'none', stroke:'rgba(255,255,255,.12)','stroke-width':1}, fuelG);
+  el('text',{x:120,y:106,fill:'#eaf6ff','font-size':13,'font-family':'Rajdhani','font-weight':700,'text-anchor':'middle'}, fuelG).textContent='FUEL';
+
+  // ---- Ox tank (right) ----
+  const oxG = el('g',{class:'rocket-part', 'data-part':'oxTank'}, rocketSvg);
+  el('rect',{x:250,y:16,width:100,height:170,rx:22,fill:'url(#gradOx)', stroke:'#0d1c2b','stroke-width':2}, oxG);
+  el('rect',{x:250,y:16,width:100,height:170,rx:22,fill:'none', stroke:'rgba(255,255,255,.12)','stroke-width':1}, oxG);
+  el('text',{x:300,y:106,fill:'#fff3e0','font-size':13,'font-family':'Rajdhani','font-weight':700,'text-anchor':'middle'}, oxG).textContent='OX';
+
+  // ---- Pipes ----
+  const pipeG = el('g',{class:'rocket-part','data-part':'pipes'}, rocketSvg);
+  el('path',{d:'M120 186 L120 230 L175 230 L175 258', fill:'none', stroke:'url(#gradMetal)','stroke-width':10,'stroke-linecap':'round'}, pipeG);
+  el('path',{d:'M300 186 L300 230 L245 230 L245 258', fill:'none', stroke:'url(#gradMetal)','stroke-width':10,'stroke-linecap':'round'}, pipeG);
+
+  // ---- Turbopumps ----
+  gTurboFuel = el('g',{class:'rocket-part','data-part':'turbopumpFuel', transform:'translate(175,262)'}, rocketSvg);
+  drawTurbopump(gTurboFuel, '#3fa9f5');
+  gTurboOx = el('g',{class:'rocket-part','data-part':'turbopumpOx', transform:'translate(245,262)'}, rocketSvg);
+  drawTurbopump(gTurboOx, '#ff7a29');
+
+  // pipes to chamber
+  const pipeG2 = el('g',{class:'rocket-part','data-part':'pipes'}, rocketSvg);
+  el('path',{d:'M175 278 L175 300 L200 314', fill:'none', stroke:'url(#gradMetal)','stroke-width':9,'stroke-linecap':'round'}, pipeG2);
+  el('path',{d:'M245 278 L245 300 L220 314', fill:'none', stroke:'url(#gradMetal)','stroke-width':9,'stroke-linecap':'round'}, pipeG2);
+
+  // ---- Combustion chamber ----
+  const chamberG = el('g',{class:'rocket-part','data-part':'chamber'}, rocketSvg);
+  chamberBody = el('path',{d:'M150 314 L290 314 L275 372 L165 372 Z', fill:'url(#gradMetal)', stroke:'#0a0f16','stroke-width':2}, chamberG);
+  chamberGlow = el('path',{d:'M162 320 L278 320 L266 366 L174 366 Z', fill:'url(#gradChamber)', opacity:0.15}, chamberG);
+  el('path',{d:'M150 314 L290 314 L275 372 L165 372 Z', fill:'none', stroke:'rgba(255,255,255,.08)','stroke-width':1}, chamberG);
+
+  // ---- Nozzle (bell) ----
+  const nozzleG = el('g',{class:'rocket-part','data-part':'nozzle'}, rocketSvg);
+  el('path',{
+    d:'M165 372 L275 372 L340 610 Q220 660 100 610 Z',
+    fill:'url(#gradMetal)', stroke:'#0a0f16','stroke-width':2
+  }, nozzleG);
+  // nozzle rib lines for detail
+  for(let i=0;i<6;i++){
+    const yy = 400 + i*36;
+    const widen = i*7;
+    el('line',{x1:145-widen*1.4, y1:yy, x2:295+widen*1.4, y2:yy, stroke:'rgba(255,255,255,.05)','stroke-width':1}, nozzleG);
+  }
+  el('path',{d:'M165 372 L275 372 L340 610 Q220 660 100 610 Z', fill:'none', stroke:'rgba(127,212,255,.08)','stroke-width':1}, nozzleG);
+
+  // inner throat glow (visible through nozzle opening, brightens with throttle)
+  gFlicker = el('ellipse',{cx:220, cy:392, rx:52, ry:14, fill:'#ffcf5c', opacity:0}, rocketSvg);
+
+  // labels / rivets omitted for clarity at this scale
+}
+
+function drawTurbopump(g, color){
+  el('circle',{cx:0,cy:0,r:20, fill:'#141c27', stroke:color,'stroke-width':2}, g);
+  const gears = el('g',{class:'turbo-spin'}, g);
+  for(let i=0;i<8;i++){
+    const ang = i*(Math.PI/4);
+    el('rect',{x:-2.5, y:-19, width:5, height:8, fill:color, transform:`rotate(${ang*180/Math.PI} 0 0)`}, gears);
+  }
+  el('circle',{cx:0,cy:0,r:7, fill:color, opacity:.85}, g);
+  g._gears = gears;
+}
+
+buildRocket();
+
+// tooltips
+const tooltip = $('tooltip'), stageWrap=$('stageWrap');
+rocketSvg.addEventListener('mousemove', e=>{
+  const part = e.target.closest('.rocket-part');
+  if(!part){ tooltip.classList.remove('show'); return; }
+  const key = part.getAttribute('data-part');
+  const info = PARTS_INFO[key];
+  if(!info) return;
+  $('ttTitle').textContent = info.t;
+  $('ttBody').textContent = info.d;
+  const rect = stageWrap.getBoundingClientRect();
+  let x = e.clientX-rect.left+14, y = e.clientY-rect.top+14;
+  tooltip.style.left = x+'px'; tooltip.style.top = y+'px';
+  tooltip.classList.add('show');
+});
+rocketSvg.addEventListener('mouseleave', ()=>tooltip.classList.remove('show'));
+rocketSvg.addEventListener('click', e=>{
+  const part = e.target.closest('.rocket-part');
+  if(part) $('eduModal').classList.add('show');
+});
+
+/* ---- Camera: zoom & pan ---- */
+const Stage = (()=>{
+  const stage=$('stage'), inner=$('stageInner'), root=$('appRoot');
+  let scale=1, tx=0, ty=0, dragging=false, lastX=0, lastY=0;
+  function apply(){ inner.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`; }
+  stage.addEventListener('wheel', e=>{
+    e.preventDefault();
+    scale = clamp(scale + (e.deltaY<0?0.08:-0.08), 0.5, 2.4);
+    apply();
+  }, {passive:false});
+  stage.addEventListener('mousedown', e=>{ dragging=true; lastX=e.clientX; lastY=e.clientY; });
+  window.addEventListener('mousemove', e=>{
+    if(!dragging) return;
+    tx += (e.clientX-lastX); ty += (e.clientY-lastY);
+    lastX=e.clientX; lastY=e.clientY; apply();
+  });
+  window.addEventListener('mouseup', ()=>dragging=false);
+  $('zoomIn').addEventListener('click', ()=>{ scale=clamp(scale+0.15,0.5,2.4); apply(); });
+  $('zoomOut').addEventListener('click', ()=>{ scale=clamp(scale-0.15,0.5,2.4); apply(); });
+  $('zoomReset').addEventListener('click', ()=>{ scale=1; tx=0; ty=0; apply(); });
+
+  let shakeT=0, shakeMag=0;
+  function screenShake(mag){ shakeMag = Math.max(shakeMag, mag); shakeT = 0.6; }
+  function tickShake(dt){
+    if(shakeT>0){
+      shakeT -= dt;
+      const m = shakeMag * (shakeT/0.6);
+      root.style.setProperty('--shake', (Math.sin(shakeT*60)*m*6)+'px');
+      if(shakeT<=0){ root.style.setProperty('--shake','0px'); shakeMag=0; }
+    }
+  }
+  return {screenShake, tickShake};
+})();
+
+/* ==========================================================================
+   6. EXHAUST PARTICLE / FLAME SYSTEM
+   ========================================================================== */
+const Flame = (()=>{
+  const canvas = $('flameCanvas');
+  const ctx = canvas.getContext('2d');
+  const ORIGIN = {x:220, y:662}; // just below the nozzle's exit mouth (visible, not occluded by the nozzle graphic)
+  const EXIT_Y = 662; // approx nozzle exit
+  const MAX_PARTICLES = 2400;
+  let particles = [];
+  let smokeParticles = [];
+  let explosionParticles = [];
+  let explosionTimer = 0;
+
+  function spawnFlameParticles(n, throttle, expansionRatio, atmPressure){
+    const spreadBase = map(expansionRatio,5,40, 0.14, 0.42);
+    const backPressureFlare = map(clamp(atmPressure,0,101.3),101.3,0, 0, 0.34); // underexpanded flare at low atm
+    for(let i=0;i<n;i++){
+      if(particles.length>=MAX_PARTICLES) break;
+      const spread = (spreadBase+backPressureFlare) * (0.4+Math.random()*0.6);
+      const ang = Math.PI/2 + (Math.random()-0.5)*spread; // mostly downward (+y)
+      const speed = map(throttle,0,1, 60, 460) * (0.7+Math.random()*0.6);
+      particles.push({
+        x: ORIGIN.x + (Math.random()-0.5)*46,
+        y: ORIGIN.y + (Math.random()-0.5)*8,
+        vx: Math.cos(ang)*speed*0.4,
+        vy: Math.sin(ang)*speed,
+        life:0, maxLife: map(throttle,0,1,0.5,1.3)*(0.7+Math.random()*0.6),
+        size: map(throttle,0,1,10,34)*(0.6+Math.random()*0.8),
+        heat: throttle*(0.8+Math.random()*0.4)
+      });
+    }
+  }
+  function spawnSmoke(n, throttle){
+    for(let i=0;i<n;i++){
+      if(smokeParticles.length>140) break;
+      smokeParticles.push({
+        x: ORIGIN.x + (Math.random()-0.5)*70,
+        y: EXIT_Y + Math.random()*20,
+        vx:(Math.random()-0.5)*22, vy: 30+Math.random()*30,
+        life:0, maxLife: 1.6+Math.random()*1.4,
+        size: 10+Math.random()*22*throttle
+      });
+    }
+  }
+
+  function triggerExplosion(){
+    explosionTimer = 1.1;
+    for(let i=0;i<160;i++){
+      const ang = Math.random()*Math.PI*2;
+      const speed = rand(60,320);
+      explosionParticles.push({
+        x:220+ (Math.random()-0.5)*40, y:392+(Math.random()-0.5)*20,
+        vx:Math.cos(ang)*speed, vy:Math.sin(ang)*speed,
+        life:0, maxLife: rand(0.5,1.1), size: rand(4,16)
+      });
+    }
+  }
+
+  function update(dt){
+    const throttle = (sim.phase==='run'||sim.phase==='shutdown') ? sim.throttle : 0;
+    if(throttle>0.01 && sim.phase!=='failed'){
+      spawnFlameParticles(Math.round(map(throttle,0,1,8,58)), throttle, sim.expansionRatio, sim.atmPressure);
+      if(Math.random()<0.6) spawnSmoke(1, throttle);
+    }
+    for(let i=particles.length-1;i>=0;i--){
+      const p = particles[i];
+      p.life += dt;
+      if(p.life>=p.maxLife){ particles.splice(i,1); continue; }
+      p.x += p.vx*dt; p.y += p.vy*dt;
+      p.vx *= (1+0.6*dt);
+      p.vy *= (1+0.15*dt);
+      p.size += dt*30;
+    }
+    for(let i=smokeParticles.length-1;i>=0;i--){
+      const p = smokeParticles[i];
+      p.life += dt;
+      if(p.life>=p.maxLife){ smokeParticles.splice(i,1); continue; }
+      p.x += p.vx*dt; p.y += p.vy*dt; p.size += dt*10;
+    }
+    if(explosionTimer>0){
+      explosionTimer -= dt;
+      for(let i=explosionParticles.length-1;i>=0;i--){
+        const p = explosionParticles[i];
+        p.life += dt;
+        if(p.life>=p.maxLife){ explosionParticles.splice(i,1); continue; }
+        p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 140*dt; p.vx *= (1-1.4*dt);
+      }
+    }
+  }
+
+  // A continuous glowing flame "body" drawn every frame — stacked additive
+  // gradient discs tapering from a wide bright core down to a soft tail.
+  // This is what gives the plume real bulk; particles add turbulent detail on top.
+  function drawFlameCore(throttle){
+    if(throttle<=0.015) return;
+    const len = map(throttle,0,1, 110, 560);
+    const steps = 26;
+    const now = performance.now()/1000;
+    const flareAmt = map(clamp(sim.atmPressure,0,101.3),101.3,0,0,1); // underexpanded flare at low atm
+    for(let i=0;i<steps;i++){
+      const t = (i+0.5)/steps;
+      const y = ORIGIN.y + t*len;
+      const wobble = Math.sin(now*13 + i*0.85)*4*throttle;
+      const baseR = lerp(58,12,t) * (0.6+throttle*0.65);
+      const flare = t>0.5 ? 1+(t-0.5)*1.6*flareAmt : 1;
+      const r = baseR*flare;
+      let cr,cg,cb;
+      if(t<0.2){ cr=215;cg=234;cb=255; }        // blue-white core
+      else if(t<0.55){ cr=255;cg=198;cb=112; }   // orange middle
+      else { cr=255;cg=118;cb=42; }              // cooling tail
+      const alpha = (1-t*0.9) * throttle * 0.55;
+      const grad = ctx.createRadialGradient(ORIGIN.x+wobble,y,0, ORIGIN.x+wobble,y,r);
+      grad.addColorStop(0, `rgba(${cr},${cg},${cb},${alpha})`);
+      grad.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(ORIGIN.x+wobble, y, r, 0, 7); ctx.fill();
+    }
+  }
+
+  function render(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.globalCompositeOperation = 'lighter';
+    // smoke first (behind, additive but dim)
+    ctx.globalCompositeOperation = 'source-over';
+    for(const p of smokeParticles){
+      const t = p.life/p.maxLife;
+      const a = (1-t)*0.14;
+      ctx.fillStyle = `rgba(120,130,145,${a})`;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size*(0.6+t*0.8),0,7); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'lighter';
+    const coreThrottle = (sim.phase==='run'||sim.phase==='shutdown') ? sim.throttle : 0;
+    drawFlameCore(coreThrottle);
+    for(const p of particles){
+      const t = p.life/p.maxLife;
+      const heatFall = 1-t;
+      let r,g,b;
+      if(p.heat*heatFall > 0.65){ r=200;g=225;b=255; } // blue-white core
+      else if(p.heat*heatFall > 0.35){ r=255;g=180;b=90; } // orange middle
+      else { r=255;g=110;b=40; } // cooling edge
+      const a = clamp((1-t)*0.55,0,1);
+      const grad = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.size);
+      grad.addColorStop(0, `rgba(${r},${g},${b},${a})`);
+      grad.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,7); ctx.fill();
+    }
+    for(const p of explosionParticles){
+      const t=p.life/p.maxLife;
+      const a = clamp(1-t,0,1);
+      const grad = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.size);
+      grad.addColorStop(0, `rgba(255,235,180,${a})`);
+      grad.addColorStop(0.5, `rgba(255,120,40,${a*0.8})`);
+      grad.addColorStop(1, `rgba(120,20,10,0)`);
+      ctx.fillStyle = grad;
+      ctx.beginPath(); ctx.arc(p.x,p.y,p.size,0,7); ctx.fill();
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  return {update, render, triggerExplosion};
+})();
+
+/* ==========================================================================
+   7. GAUGES (circular SVG)
+   ========================================================================== */
+function buildGauge(svgEl, color){
+  svgEl.innerHTML='';
+  el('circle',{cx:40,cy:40,r:32, fill:'none', stroke:'rgba(255,255,255,.08)','stroke-width':6}, svgEl);
+  const arc = el('circle',{cx:40,cy:40,r:32, fill:'none', stroke:color,'stroke-width':6,
+    'stroke-linecap':'round', 'stroke-dasharray':2*Math.PI*32, 'stroke-dashoffset':2*Math.PI*32,
+    transform:'rotate(-90 40 40)'}, svgEl);
+  return arc;
+}
+const gauges = {
+  thrust: buildGauge($('gThrust'), '#3fa9f5'),
+  temp: buildGauge($('gTemp'), '#ff7a29'),
+  press: buildGauge($('gPress'), '#ffcf5c'),
+  isp: buildGauge($('gIsp'), '#34e5a8')
+};
+function setGauge(arc, frac){
+  const c = 2*Math.PI*32;
+  arc.setAttribute('stroke-dashoffset', c*(1-clamp(frac,0,1)));
+}
+
+/* ==========================================================================
+   8. CHARTS  (rolling line graphs on canvas)
+   ========================================================================== */
+const Charts = (()=>{
+  const WINDOW = 60; // seconds
+  const specs = [
+    {id:'chartThrust', key:'thrust', color:'#3fa9f5', max:()=>400, cv:'cvThrust', fmt:v=>v.toFixed(0)},
+    {id:'chartAlt', key:'altitude', color:'#7fd4ff', max:()=>Math.max(200, Math.max(...bufs.altitude,10)*1.2), cv:'cvAlt', fmt:v=>v.toFixed(0)},
+    {id:'chartVel', key:'velocity', color:'#34e5a8', max:()=>Math.max(50, Math.max(...bufs.velocity.map(Math.abs),10)*1.2), cv:'cvVel', fmt:v=>v.toFixed(1)},
+    {id:'chartFuel', key:'fuel', color:'#3fa9f5', max:()=>100, cv:'cvFuel', fmt:v=>v.toFixed(0)},
+    {id:'chartTemp', key:'temp', color:'#ff7a29', max:()=>3600, cv:'cvTemp', fmt:v=>v.toFixed(0)},
+    {id:'chartPress', key:'press', color:'#ffcf5c', max:()=>25, cv:'cvPress', fmt:v=>v.toFixed(1)},
+  ];
+  const bufs = {thrust:[], altitude:[], velocity:[], fuel:[], temp:[], press:[]};
+  const canvases = {};
+  specs.forEach(s=> canvases[s.key] = $(s.id));
+
+  function reset(){ Object.keys(bufs).forEach(k=>bufs[k]=[]); }
+
+  function push(sample){
+    bufs.thrust.push(sample.thrust);
+    bufs.altitude.push(sample.altitude);
+    bufs.velocity.push(sample.velocity);
+    bufs.fuel.push(sample.fuel);
+    bufs.temp.push(sample.temp);
+    bufs.press.push(sample.press);
+    for(const k in bufs){ if(bufs[k].length>WINDOW*20) bufs[k].shift(); }
+  }
+
+  function drawOne(spec){
+    const canvas = canvases[spec.key];
+    const ctx = canvas.getContext('2d');
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if(canvas.width!==w*devicePixelRatio || canvas.height!==h*devicePixelRatio){
+      canvas.width = w*devicePixelRatio; canvas.height = h*devicePixelRatio;
+    }
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    ctx.clearRect(0,0,w,h);
+    const data = bufs[spec.key];
+    const maxV = spec.max() || 1;
+    // gridlines
+    ctx.strokeStyle='rgba(255,255,255,.05)'; ctx.lineWidth=1;
+    for(let i=1;i<3;i++){ const y=h*i/3; ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+    if(data.length<2) return;
+    ctx.beginPath();
+    for(let i=0;i<data.length;i++){
+      const x = map(i,0,data.length-1,4,w-4);
+      const y = h-6 - clamp(data[i]/maxV,0,1.3)*(h-16);
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.strokeStyle = spec.color; ctx.lineWidth=1.6; ctx.lineJoin='round'; ctx.stroke();
+    // filled glow underneath
+    ctx.lineTo(w-4,h); ctx.lineTo(4,h); ctx.closePath();
+    const grad = ctx.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0, spec.color+'55'); grad.addColorStop(1, spec.color+'00');
+    ctx.fillStyle = grad; ctx.fill();
+    $(spec.cv).textContent = spec.fmt(data[data.length-1]);
+  }
+
+  function render(){ specs.forEach(drawOne); }
+  return {push, render, reset};
+})();
+
+/* ==========================================================================
+   9. HUD / READOUT UPDATE
+   ========================================================================== */
+function fmtTime(s){
+  const m = Math.floor(s/60), sec = (s%60).toFixed(1).padStart(4,'0');
+  return `T+${String(m).padStart(2,'0')}:${sec}`;
+}
+function updateHUD(){
+  const thrustKN = sim.thrust/1000;
+  $('hudThrottle').textContent = Math.round(sim.throttle*100);
+  $('vThrottle').textContent = Math.round(sim.throttleTarget*100);
+
+  $('metTime').textContent = fmtTime(sim.missionTime);
+  $('burnTime').textContent = sim.burnTime.toFixed(1)+'s';
+
+  $('gThrustVal').textContent = thrustKN.toFixed(0);
+  $('gTempVal').textContent = sim.chamberTemp.toFixed(0);
+  $('gPressVal').textContent = sim.chamberPressure.toFixed(1);
+  $('gIspVal').textContent = sim.isp.toFixed(0);
+  setGauge(gauges.thrust, thrustKN/400);
+  setGauge(gauges.temp, sim.chamberTemp/sim.tempLimit);
+  setGauge(gauges.press, sim.chamberPressure/sim.pressureLimit);
+  setGauge(gauges.isp, sim.isp/340);
+
+  $('rVelocity').textContent = sim.velocity.toFixed(1);
+  $('rAltitude').textContent = sim.altitude.toFixed(1);
+  $('rAccel').textContent = (sim.accel/G0).toFixed(2);
+  $('rTotalMass').textContent = (sim.dryMass+sim.fuel+sim.ox).toFixed(0);
+  $('rDv').textContent = sim.dv.toFixed(1);
+  $('rMdot').textContent = sim.mdot.toFixed(1);
+
+  const fuelPct = sim.fuelCap>0 ? (sim.fuel/sim.fuelCap*100) : 0;
+  const oxPct = sim.oxCap>0 ? (sim.ox/sim.oxCap*100) : 0;
+  $('rFuelPct').textContent = fuelPct.toFixed(0);
+  $('rOxPct').textContent = oxPct.toFixed(0);
+  $('barFuel').style.width = fuelPct+'%';
+  $('barOx').style.width = oxPct+'%';
+
+  // temp/pressure readouts flip color near limits
+  const tEl = $('gTempVal'), pEl=$('gPressVal');
+  tEl.className = sim.chamberTemp>sim.tempLimit*0.92 ? (sim.chamberTemp>sim.tempLimit? 'gauge-val crit':'gauge-val warn') : 'gauge-val';
+  pEl.className = sim.chamberPressure>sim.pressureLimit*0.92 ? (sim.chamberPressure>sim.pressureLimit? 'gauge-val crit':'gauge-val warn') : 'gauge-val';
+
+  // rocket visuals
+  const throttleVis = (sim.phase==='run'||sim.phase==='shutdown') ? sim.throttle : 0;
+  chamberGlow.setAttribute('opacity', 0.15+throttleVis*0.8);
+  gFlicker.setAttribute('opacity', throttleVis*0.5*(0.8+Math.random()*0.4));
+  const turboSpeed = throttleVis*1400 + 20;
+  gTurboFuel._gears.setAttribute('transform', `rotate(${(performance.now()/1000*turboSpeed)%360})`);
+  gTurboOx._gears.setAttribute('transform', `rotate(${-(performance.now()/1000*turboSpeed)%360})`);
+
+  // vibration jitter on stage-inner (subtle, separate from big screen-shake)
+  const vib = sim.vibration*1.6;
+  $('stageInner').style.transform += ''; // no-op guard
+}
+
+/* ==========================================================================
+   10. MAIN LOOP  (fixed-step physics decoupled from render)
+   ========================================================================== */
+const Loop = (()=>{
+  const STEP = 1/120;
+  let acc=0, last=0, raf=null, paused=false, chartAccum=0;
+
+  function frame(ts){
+    if(!last) last = ts;
+    let dt = (ts-last)/1000; last = ts;
+    dt = Math.min(dt, 0.06);
+    if(!paused){
+      acc += dt;
+      while(acc>=STEP){ stepPhysics(STEP); acc-=STEP; }
+      Flame.update(dt);
+      Stage.tickShake(dt);
+      chartAccum += dt;
+      if(chartAccum>0.08){
+        chartAccum=0;
+        Charts.push({
+          thrust: sim.thrust/1000, altitude: sim.altitude, velocity: sim.velocity,
+          fuel: sim.fuelCap>0? sim.fuel/sim.fuelCap*100:0, temp: sim.chamberTemp, press: sim.chamberPressure
+        });
+      }
+    }
+    Flame.render();
+    Charts.render();
+    updateHUD();
+    raf = requestAnimationFrame(frame);
+  }
+  function start(){ last=0; raf = requestAnimationFrame(frame); }
+  function pause(){ paused=true; }
+  function resume(){ paused=false; last=0; }
+  return {start, pause, resume};
+})();
+
+/* ==========================================================================
+   11. INIT
+   ========================================================================== */
+resetSim();
+Loop.start();
+</script>
+</body>
+</html>
