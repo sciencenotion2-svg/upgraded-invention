@@ -17,9 +17,21 @@
     <!-- Add your real Google Search Console verification tag here if Google gives you one. -->
     <!-- <meta name="google-site-verification" content="YOUR_REAL_CODE_HERE"> -->
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Fonts are self-hosted (./fonts) so first render never waits on fonts.googleapis.com / fonts.gstatic.com -->
+    <link rel="preload" href="fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/rajdhani-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="fonts/jetbrains-mono-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+/* self-hosted fonts (latin subset, swap: text paints immediately in the fallback font) */
+@font-face{font-family:'Rajdhani'; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/rajdhani-latin-500-normal.woff2) format('woff2');}
+@font-face{font-family:'Rajdhani'; font-style:normal; font-weight:600; font-display:swap; src:url(fonts/rajdhani-latin-600-normal.woff2) format('woff2');}
+@font-face{font-family:'Rajdhani'; font-style:normal; font-weight:700; font-display:swap; src:url(fonts/rajdhani-latin-700-normal.woff2) format('woff2');}
+@font-face{font-family:'Inter'; font-style:normal; font-weight:400; font-display:swap; src:url(fonts/inter-latin-400-normal.woff2) format('woff2');}
+@font-face{font-family:'Inter'; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/inter-latin-500-normal.woff2) format('woff2');}
+@font-face{font-family:'Inter'; font-style:normal; font-weight:600; font-display:swap; src:url(fonts/inter-latin-600-normal.woff2) format('woff2');}
+@font-face{font-family:'JetBrains Mono'; font-style:normal; font-weight:400; font-display:swap; src:url(fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2');}
+@font-face{font-family:'JetBrains Mono'; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/jetbrains-mono-latin-500-normal.woff2) format('woff2');}
+@font-face{font-family:'JetBrains Mono'; font-style:normal; font-weight:700; font-display:swap; src:url(fonts/jetbrains-mono-latin-700-normal.woff2) format('woff2');}
 /* ==========================================================================
    DESIGN TOKENS
    ========================================================================== */
@@ -743,17 +755,27 @@ canvas,svg,img,iframe{max-width:100%;}
     lock=b; setOn(b); go(b.dataset.t);
     clearTimeout(lockT); lockT=setTimeout(()=>{lock=null;},1200);
   }));
+  let scrollQueued=false;
   window.addEventListener('scroll',()=>{
     if(!mq.matches) return;
     if(lock){ clearTimeout(lockT); lockT=setTimeout(()=>{lock=null;},250); return; }
+    if(scrollQueued) return; scrollQueued=true;
+    requestAnimationFrame(()=>{ scrollQueued=false; syncNav(); });
+  },{passive:true});
+  function syncNav(){
     let cur=btns[0];
     btns.forEach(b=>{const e=document.getElementById(b.dataset.t);if(e.getBoundingClientRect().top<window.innerHeight*.45)cur=b});
     btns.forEach(b=>b.classList.toggle('on',b===cur));
-  },{passive:true});
+  }
 })();
 </script>
 
 <script>
+/* The simulator boots right after the first paint (not inside the parsing task), so the page shows immediately.
+   No inline handlers or globals are used outside this function. */
+(function(){
+let booted=false;
+function boot(){
 'use strict';
 /* ==========================================================================
    0. UTILITIES
@@ -785,8 +807,8 @@ const BackgroundFX = (()=>{
       vx:rand(-0.08,0.08), vy:rand(-0.05,-0.16), a:rand(.08,.28)
     }));
   }
-  window.addEventListener('resize', resize);
-  resize();
+  let rzT=0;
+  window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT=setTimeout(resize,120); });
 
   function drawGrid(){
     const spacing = 46;
@@ -821,7 +843,8 @@ const BackgroundFX = (()=>{
     }
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
+  /* start after the first paint: measuring the window here during script start forced a full synchronous layout */
+  requestAnimationFrame(()=>setTimeout(()=>{ resize(); requestAnimationFrame(frame); },0));
   return {};
 })();
 
@@ -1315,7 +1338,7 @@ const Stage = (()=>{
     const w=stage.clientWidth, h=stage.clientHeight; if(!w||!h) return;
     scale=clamp(Math.min(w/440,h/800),0.3,2.4); tx=0; ty=140*scale-100; apply();
   }
-  window.addEventListener('resize', fit); fit();
+  let fitQ=false; window.addEventListener('resize', ()=>{ if(fitQ) return; fitQ=true; requestAnimationFrame(()=>{ fitQ=false; fit(); }); }); fit();
   stage.addEventListener('wheel', e=>{
     e.preventDefault();
     scale = clamp(scale + (e.deltaY<0?0.08:-0.08), 0.5, 2.4);
@@ -1572,6 +1595,15 @@ const Charts = (()=>{
   const bufs = {thrust:[], altitude:[], velocity:[], fuel:[], temp:[], press:[]};
   const canvases = {};
   specs.forEach(s=> canvases[s.key] = $(s.id));
+  /* canvas sizes are cached and refreshed by a ResizeObserver, so drawing never reads layout (no forced reflow in the frame loop) */
+  const sizes = {};
+  if('ResizeObserver' in window){
+    const ro = new ResizeObserver(es=>es.forEach(en=>{
+      const k = specs.find(sp=>canvases[sp.key]===en.target).key;
+      sizes[k] = {w:Math.round(en.contentRect.width), h:Math.round(en.contentRect.height)};
+    }));
+    specs.forEach(sp=>ro.observe(canvases[sp.key]));
+  }
 
   function reset(){ Object.keys(bufs).forEach(k=>bufs[k]=[]); }
 
@@ -1588,7 +1620,9 @@ const Charts = (()=>{
   function drawOne(spec){
     const canvas = canvases[spec.key];
     const ctx = canvas.getContext('2d');
-    const w = canvas.clientWidth, h = canvas.clientHeight;
+    const sz = sizes[spec.key] || (sizes[spec.key] = {w:canvas.clientWidth, h:canvas.clientHeight});
+    const w = sz.w, h = sz.h;
+    if(!w || !h) return;
     if(canvas.width!==w*devicePixelRatio || canvas.height!==h*devicePixelRatio){
       canvas.width = w*devicePixelRatio; canvas.height = h*devicePixelRatio;
     }
@@ -1723,7 +1757,12 @@ const Loop = (()=>{
 document.addEventListener('click',e=>{ const b=e.target.closest && e.target.closest('.btn,.step'); if(b && navigator.vibrate) navigator.vibrate(b.id==='btnEmergency'?45:10); });
 ['stage','rocketSvg','flameCanvas'].forEach(id=>$(id).addEventListener('contextmenu',e=>e.preventDefault()));
 resetSim();
-Loop.start();
+requestAnimationFrame(()=>setTimeout(Loop.start,0));
+}
+function go(){ if(booted) return; booted=true; boot(); }
+requestAnimationFrame(()=>setTimeout(go,0));
+setTimeout(go,600); /* fallback if rAF is paused (background tab) */
+})();
 </script>
 </body>
 </html>
